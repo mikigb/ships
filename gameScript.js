@@ -15,6 +15,7 @@ function main(){
     	this.img.height = 100;
 	    this.vel = vel;
 	    this.ang = 0;
+	    this.bullets = [];
 
 	    this.calculateAngle = function(objX, objY, curX, curY) {
 	    	var difX = objX - curX;
@@ -34,6 +35,16 @@ function main(){
 		    this.y += movY;
     	};
 
+    	this.moveBullets = function(cx, cy) {
+    		for(var i = 0; i < this.bullets.length; i++){
+		    this.bullets[i].calculatePos();
+		    if((this.bullets[i].x > this.x + cx) || (this.bullets[i].x < this.x - cx) 
+		    	|| (this.bullets[i].y > this.y + cy) || (this.bullets[i].y < this.y - cy)){
+		    	this.bullets.splice(i, 1);
+		    }
+		}
+    	}
+
     	this.draw = function(ctx, x, y) {
     		ctx.save();
 			ctx.translate(x, y);
@@ -41,6 +52,29 @@ function main(){
 			ctx.translate(-x, -y);
 			ctx.drawImage(this.img, x - this.img.width/2, y - this.img.height/2, this.img.width, this.img.height);
 			ctx.restore();
+    	};
+	}
+
+	function Bullet(x, y, ang, vel){
+		this.x = x;
+		this.y = y;
+		this.ang = ang;
+		this.vel = vel;
+
+		this.calculatePos = function() {
+	    	var movX = Math.cos(this.ang)*this.vel;
+		    var movY = Math.sin(this.ang)*this.vel;
+
+		    this.x += movX;
+		    this.y += movY;
+    	};
+
+    	this.draw = function(ctx, x, y) {
+			ctx.beginPath();
+			ctx.arc(x, y, 2, 0, 2 * Math.PI);
+		    ctx.fillStyle = "#000000";
+		    ctx.fill();
+		    ctx.closePath();
     	};
 	}
 
@@ -88,9 +122,16 @@ function main(){
 		    		enemy.draw(ctx, cx - (ship.x - enemy.x), cy - (ship.y - enemy.y));
 		    	}
 		    }
-    	}; 
 
-    	
+		    for(var i = 0; i < ship.bullets.length; i++){
+		    	ship.bullets[i].draw(ctx, cx + (ship.bullets[i].x - ship.x), cy + (ship.bullets[i].y - ship.y));
+		    }
+
+		    /*ctx.font = "30px Arial";
+			ctx.fillStyle = "red";
+			ctx.textAlign = "center";
+			ctx.fillText(ship.bullets.length, 10, 50);*/
+    	}; 	
 	}
 
 	var map = new Mapa();
@@ -103,6 +144,11 @@ function main(){
 	function mousemoveHandler(e){
 		mouseX = e.clientX;
 		mouseY = e.clientY;
+	}
+
+	document.addEventListener("click", mouseclickHandler, false);
+	function mouseclickHandler(e){
+		ship.bullets.push(new Bullet(ship.x, ship.y, ship.ang, ship.vel));
 	}
 
 	document.addEventListener("keydown", keydownHandler, false);
@@ -121,6 +167,8 @@ function main(){
 		ship.calculateAngle(mouseX, mouseY, cx, cy);
 		enemy.calculateAngle(ship.x, ship.y, enemy.x, enemy.y);
 		enemy.calculatePos();
+		ship.moveBullets(cx, cy);
+
 		draw();
 	}
 
