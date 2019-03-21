@@ -6,7 +6,7 @@ function main(){
 	var cx = canvas.width/2;
 	var cy = canvas.height/2;  
 
-	function SpaceShip(x, y, src, vel) {
+	function SpaceShip(x, y, src, vel, life) {
 		this.x = x/2;
 		this.y = y/2;
 	    this.img = new Image(); 
@@ -16,6 +16,10 @@ function main(){
 	    this.vel = vel;
 	    this.ang = 0;
 	    this.bullets = [];
+	    this.life = life;
+	    this.explosion = [];
+	    this.explosionFlag = 0;
+	    this.hitted = 0;
 
 	    this.calculateAngle = function(objX, objY, curX, curY) {
 	    	var difX = objX - curX;
@@ -37,21 +41,65 @@ function main(){
 
     	this.moveBullets = function(cx, cy) {
     		for(var i = 0; i < this.bullets.length; i++){
-		    this.bullets[i].calculatePos();
-		    if((this.bullets[i].x > this.x + cx) || (this.bullets[i].x < this.x - cx) 
-		    	|| (this.bullets[i].y > this.y + cy) || (this.bullets[i].y < this.y - cy)){
-		    	this.bullets.splice(i, 1);
-		    }
-		}
+			    this.bullets[i].calculatePos();
+			    if((this.bullets[i].x > this.x + cx) || (this.bullets[i].x < this.x - cx) 
+			    	|| (this.bullets[i].y > this.y + cy) || (this.bullets[i].y < this.y - cy)){
+			    	this.bullets.splice(i, 1);
+			    }
+			}
+    	}
+
+    	this.collideBullets = function(ship){
+    		for(var i = 0; i < this.bullets.length; i++){
+			    if(this.bullets[i].collide(ship)) {
+			    	this.bullets.splice(i, 1);
+			    }
+			}
+    	}
+
+    	this.hit = function(){
+    		this.life-=10;
+    		if(this.life <= 0 && !this.hitted){
+    			for(var i = 0, j = 0; i < 15; i++) {
+    				this.explosion[j] = new Image();
+    				this.explosion[j].src = "explosion/explosion_" + i + ".png";
+    				this.explosion[j+1] = new Image();
+    				this.explosion[j+1].src = "explosion/explosion_" + i + ".png";
+    				this.explosion[j+2] = new Image();
+    				this.explosion[j+2].src = "explosion/explosion_" + i + ".png";
+    				this.explosion[j+3] = new Image();
+    				this.explosion[j+3].src = "explosion/explosion_" + i + ".png";
+    				j+=4;
+    			}
+    			this.img.width = 128;
+			    this.img.height = 128; 
+    			this.hitted++;
+    		}
     	}
 
     	this.draw = function(ctx, x, y) {
-    		ctx.save();
-			ctx.translate(x, y);
-			ctx.rotate(this.ang + Math.PI/2);
-			ctx.translate(-x, -y);
-			ctx.drawImage(this.img, x - this.img.width/2, y - this.img.height/2, this.img.width, this.img.height);
-			ctx.restore();
+    		if(this.explosionFlag < 60) {
+	    		if(this.life <= 0){
+	    			this.img = this.explosion[this.explosionFlag];
+				    this.explosionFlag++;
+	    		} 
+
+		    	ctx.save();
+				ctx.translate(x, y);
+				ctx.rotate(this.ang + Math.PI/2);
+				ctx.translate(-x, -y);
+				ctx.drawImage(this.img, x - this.img.width/2, y - this.img.height/2, this.img.width, this.img.height);
+				ctx.restore();
+
+				if(this.life > 0){
+					ctx.beginPath();
+					ctx.moveTo((x - this.img.width/2)-10, y - this.img.height/2);
+					ctx.lineTo(((x - this.img.width/2)-10)+this.life, y - this.img.height/2);
+					ctx.strokeStyle = "green";
+					ctx.stroke();
+					ctx.closePath();
+				}
+			}
     	};
 	}
 
@@ -68,6 +116,15 @@ function main(){
 		    this.x += movX;
 		    this.y += movY;
     	};
+
+    	this.collide = function(obj) {
+    		if((this.x < obj.x + obj.img.width/2 && this.x > obj.x - obj.img.width/2)
+    			&& (this.y < obj.y + obj.img.height/2 && this.y > obj.y - obj.img.height/2)){
+    			obj.hit();
+    			return 1;
+    		}
+    		return 0;	
+    	}
 
     	this.draw = function(ctx, x, y) {
 			ctx.beginPath();
@@ -135,8 +192,8 @@ function main(){
 	}
 
 	var map = new Mapa();
-	var ship = new SpaceShip(map.maxWidth/2, map.maxHeight/2, "nave-1.png", 10);
-	var enemy = new SpaceShip(map.maxWidth/2 + 200, map.maxHeight/2 + 200, "nave-1.png", 0.5);
+	var ship = new SpaceShip(map.maxWidth/2, map.maxHeight/2, "nave-1.png", 10, 100);
+	var enemy = new SpaceShip(map.maxWidth/2 + 200, map.maxHeight/2 + 200, "nave-1.png", 0.5, 100);
 
 	var mouseX = 0;
 	var mouseY = 0;
@@ -168,6 +225,8 @@ function main(){
 		enemy.calculateAngle(ship.x, ship.y, enemy.x, enemy.y);
 		enemy.calculatePos();
 		ship.moveBullets(cx, cy);
+		ship.collideBullets(enemy);
+
 
 		draw();
 	}
