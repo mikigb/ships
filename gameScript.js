@@ -17,9 +17,6 @@ function main(){
 	    this.ang = 0;
 	    this.bullets = [];
 	    this.life = life;
-	    this.explosion = [];
-	    this.explosionFlag = 0;
-	    this.hitted = 0;
 
 	    this.calculateAngle = function(objX, objY, curX, curY) {
 	    	var difX = objX - curX;
@@ -32,11 +29,11 @@ function main(){
     	};
 
     	this.calculatePos = function() {
-	    	var movX = Math.cos(this.ang)*this.vel;
-		    var movY = Math.sin(this.ang)*this.vel;
+		    var movX = Math.cos(this.ang)*this.vel;
+			var movY = Math.sin(this.ang)*this.vel;
 
-		    this.x += movX;
-		    this.y += movY;
+			this.x += movX;
+			this.y += movY;
     	};
 
     	this.moveBullets = function(cx, cy) {
@@ -51,54 +48,35 @@ function main(){
 
     	this.collideBullets = function(ship){
     		for(var i = 0; i < this.bullets.length; i++){
-			    if(this.bullets[i].collide(ship)) {
-			    	this.bullets.splice(i, 1);
-			    }
+    			if(!this.bullets[i].hitted)
+				    this.bullets[i].collide(ship);
+				if(this.bullets[i].isDead())
+					this.bullets.splice(i, 1);
 			}
     	}
 
     	this.hit = function(){
     		this.life-=10;
-    		if(this.life <= 0 && !this.hitted){
-    			for(var i = 0, j = 0; i < 15; i++) {
-    				this.explosion[j] = new Image();
-    				this.explosion[j].src = "explosion/explosion_" + i + ".png";
-    				this.explosion[j+1] = new Image();
-    				this.explosion[j+1].src = "explosion/explosion_" + i + ".png";
-    				this.explosion[j+2] = new Image();
-    				this.explosion[j+2].src = "explosion/explosion_" + i + ".png";
-    				this.explosion[j+3] = new Image();
-    				this.explosion[j+3].src = "explosion/explosion_" + i + ".png";
-    				j+=4;
-    			}
-    			this.img.width = 128;
-			    this.img.height = 128; 
-    			this.hitted++;
-    		}
+    		if(this.life <= 0)
+    			return 1;
+    		return 0;
     	}
 
     	this.draw = function(ctx, x, y) {
-    		if(this.explosionFlag < 60) {
-	    		if(this.life <= 0){
-	    			this.img = this.explosion[this.explosionFlag];
-				    this.explosionFlag++;
-	    		} 
+		    ctx.save();
+			ctx.translate(x, y);
+			ctx.rotate(this.ang + Math.PI/2);
+			ctx.translate(-x, -y);
+			ctx.drawImage(this.img, x - this.img.width/2, y - this.img.height/2, this.img.width, this.img.height);
+			ctx.restore();
 
-		    	ctx.save();
-				ctx.translate(x, y);
-				ctx.rotate(this.ang + Math.PI/2);
-				ctx.translate(-x, -y);
-				ctx.drawImage(this.img, x - this.img.width/2, y - this.img.height/2, this.img.width, this.img.height);
-				ctx.restore();
-
-				if(this.life > 0){
-					ctx.beginPath();
-					ctx.moveTo((x - this.img.width/2)-10, y - this.img.height/2);
-					ctx.lineTo(((x - this.img.width/2)-10)+this.life, y - this.img.height/2);
-					ctx.strokeStyle = "green";
-					ctx.stroke();
-					ctx.closePath();
-				}
+			if(this.life > 0){
+				ctx.beginPath();
+				ctx.moveTo((x - this.img.width/2)-10, y - this.img.height/2);
+				ctx.lineTo(((x - this.img.width/2)-10)+this.life, y - this.img.height/2);
+				ctx.strokeStyle = "green";
+				ctx.stroke();
+				ctx.closePath();
 			}
     	};
 	}
@@ -108,30 +86,64 @@ function main(){
 		this.y = y;
 		this.ang = ang;
 		this.vel = vel;
+		this.img = new Image();
+		this.img.width = 256;
+		this.img.height = 256; 
+		this.explosion = [];
+	    this.explosionCount = 0;
+	    this.hitted = 0;
+	    this.explosionFrames = 45;
+
+	    this.isDead = function() {
+	    	if(this.explosionCount == this.explosionFrames)
+	    		return 1;
+	    	return 0;
+	    }
 
 		this.calculatePos = function() {
-	    	var movX = Math.cos(this.ang)*this.vel;
-		    var movY = Math.sin(this.ang)*this.vel;
+			if(this.hitted == 0){
+		    	var movX = Math.cos(this.ang)*this.vel;
+			    var movY = Math.sin(this.ang)*this.vel;
 
-		    this.x += movX;
-		    this.y += movY;
+			    this.x += movX;
+			    this.y += movY;
+			}
     	};
 
     	this.collide = function(obj) {
     		if((this.x < obj.x + obj.img.width/2 && this.x > obj.x - obj.img.width/2)
     			&& (this.y < obj.y + obj.img.height/2 && this.y > obj.y - obj.img.height/2)){
-    			obj.hit();
-    			return 1;
+	    		for(var i = 0, j = 0; i < 15; i++) {
+	    			this.explosion[j] = "explosion/explosion_" + i + ".png";
+	    			this.explosion[j+1] = "explosion/explosion_" + i + ".png";
+	    			this.explosion[j+2] = "explosion/explosion_" + i + ".png";
+	    			j+=3;
+	    		}
+	    		this.hitted++;
+	    		obj.hit();
     		}
-    		return 0;	
     	}
 
     	this.draw = function(ctx, x, y) {
-			ctx.beginPath();
-			ctx.arc(x, y, 2, 0, 2 * Math.PI);
-		    ctx.fillStyle = "#000000";
-		    ctx.fill();
-		    ctx.closePath();
+    		if(this.hitted){
+    			if(this.explosionCount < this.explosionFrames) {
+		    		this.img.src = this.explosion[this.explosionCount];
+					this.explosionCount++;
+
+			    	ctx.save();
+					ctx.translate(x, y);
+					ctx.rotate(this.ang + Math.PI/2);
+					ctx.translate(-x, -y);
+					ctx.drawImage(this.img, x - this.img.width/2, y - this.img.height/2, this.img.width, this.img.height);
+					ctx.restore();
+				}
+    		} else {
+    			ctx.beginPath();
+				ctx.arc(x, y, 2, 0, 2 * Math.PI);
+			    ctx.fillStyle = "#000000";
+			    ctx.fill();
+			    ctx.closePath();
+    		}
     	};
 	}
 
@@ -184,10 +196,10 @@ function main(){
 		    	ship.bullets[i].draw(ctx, cx + (ship.bullets[i].x - ship.x), cy + (ship.bullets[i].y - ship.y));
 		    }
 
-		    /*ctx.font = "30px Arial";
+		    ctx.font = "30px Arial";
 			ctx.fillStyle = "red";
 			ctx.textAlign = "center";
-			ctx.fillText(ship.bullets.length, 10, 50);*/
+			ctx.fillText(ship.bullets.length, 10, 50);
     	}; 	
 	}
 
