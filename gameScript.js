@@ -332,7 +332,9 @@ function main(){
 	var numberOfEnemies = 1;
 
 	for(var i = 0; i < numberOfEnemies; i++){
-		enemies[i] = new Enemy(map.maxWidth/2 + 200, map.maxHeight/2 + 200, "nave-1.png", 2, 100);
+    	var randomWidth =Math.floor(Math.random() * map.maxWidth);
+    	var randomHeight =Math.floor(Math.random() * map.maxHeight);
+		enemies[i] = new Enemy(randomWidth, randomHeight, "nave-1.png", 2, 100);
 	}
 
 	var mouseX = 0;
