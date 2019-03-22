@@ -18,6 +18,12 @@ function main(){
 	    this.bullets = [];
 	    this.life = life;
 
+	    this.isDead = function() {
+	    	if(this.life <= 0)
+	    		return 1;
+	    	return 0;
+	    }
+
 	    this.calculateAngle = function(objX, objY, curX, curY) {
 	    	var difX = objX - curX;
 		    var difY = objY - curY;
@@ -72,8 +78,16 @@ function main(){
 
 			if(this.life > 0){
 				ctx.beginPath();
+				ctx.moveTo(((x - this.img.width/2)-10)+this.life, y - this.img.height/2);
+				ctx.lineTo(((x - this.img.width/2)-10)+100, y - this.img.height/2);
+				ctx.lineWidth = 4;
+				ctx.strokeStyle = "red";
+				ctx.stroke();
+				ctx.closePath();
+				ctx.beginPath();
 				ctx.moveTo((x - this.img.width/2)-10, y - this.img.height/2);
 				ctx.lineTo(((x - this.img.width/2)-10)+this.life, y - this.img.height/2);
+				ctx.lineWidth = 4;
 				ctx.strokeStyle = "green";
 				ctx.stroke();
 				ctx.closePath();
@@ -174,7 +188,22 @@ function main(){
 
 		    ship.draw(ctx, cx, cy);
 
-		    if((enemy.x < ship.x + cx) && (enemy.x > ship.x)){
+		    for(var i = 0; i < numberOfEnemies; i++){
+				this.drawEnemies(ctx, cx, cy, ship, enemies[i]);
+			}
+
+		    for(var i = 0; i < ship.bullets.length; i++){
+		    	ship.bullets[i].draw(ctx, cx + (ship.bullets[i].x - ship.x), cy + (ship.bullets[i].y - ship.y));
+		    }
+
+		    ctx.font = "30px Arial";
+			ctx.fillStyle = "red";
+			ctx.textAlign = "center";
+			ctx.fillText(ship.bullets.length, 10, 50);
+    	};
+
+    	this.drawEnemies = function(ctx, cx, cy, ship, enemy) {
+    		if((enemy.x < ship.x + cx) && (enemy.x > ship.x)){
 		    	if((enemy.y < ship.y + cy) && (enemy.y > ship.y)){
 		    		enemy.draw(ctx, cx + (enemy.x - ship.x), cy + (enemy.y - ship.y));
 		    	}
@@ -191,21 +220,17 @@ function main(){
 		    		enemy.draw(ctx, cx - (ship.x - enemy.x), cy - (ship.y - enemy.y));
 		    	}
 		    }
-
-		    for(var i = 0; i < ship.bullets.length; i++){
-		    	ship.bullets[i].draw(ctx, cx + (ship.bullets[i].x - ship.x), cy + (ship.bullets[i].y - ship.y));
-		    }
-
-		    ctx.font = "30px Arial";
-			ctx.fillStyle = "red";
-			ctx.textAlign = "center";
-			ctx.fillText(ship.bullets.length, 10, 50);
-    	}; 	
+    	}
 	}
 
 	var map = new Mapa();
 	var ship = new SpaceShip(map.maxWidth/2, map.maxHeight/2, "nave-1.png", 10, 100);
-	var enemy = new SpaceShip(map.maxWidth/2 + 200, map.maxHeight/2 + 200, "nave-1.png", 0.5, 100);
+	var enemies = [];
+	var numberOfEnemies = 1;
+
+	for(var i = 0; i < numberOfEnemies; i++){
+		enemies[i] = new SpaceShip(map.maxWidth/2 + 200, map.maxHeight/2 + 200, "nave-1.png", 0.5, 100);
+	}
 
 	var mouseX = 0;
 	var mouseY = 0;
@@ -234,12 +259,16 @@ function main(){
 
 	function update(){
 		ship.calculateAngle(mouseX, mouseY, cx, cy);
-		enemy.calculateAngle(ship.x, ship.y, enemy.x, enemy.y);
-		enemy.calculatePos();
 		ship.moveBullets(cx, cy);
-		ship.collideBullets(enemy);
-
-
+		for(var i = 0; i < numberOfEnemies; i++) {
+			enemies[i].calculateAngle(ship.x, ship.y, enemies[i].x, enemies[i].y);
+			enemies[i].calculatePos();
+			ship.collideBullets(enemies[i]);
+			if(enemies[i].isDead()) {
+				enemies.splice(i, 1);
+				numberOfEnemies--;
+			}
+		}
 		draw();
 	}
 
