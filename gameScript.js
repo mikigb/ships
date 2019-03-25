@@ -11,19 +11,21 @@ function main(){
 		this.y = y/2;
 	    this.img = new Image(); 
     	this.img.src = src;
-    	this.img.width = 100;
-    	this.img.height = 100;
-	    this.vel = vel;
+    	this.img.width = 50;
+    	this.img.height = 50;
+	    this.vel = 0;
+	    this.maxVel = vel;
 	    this.ang = 0;
 	    this.bullets = [];
 	    this.life = life;
+	    this.maxLife = life;
 	    this.wIsPressed = 0;
 
 	    this.isDead = function() {
 	    	if(this.life <= 0)
 	    		return 1;
 	    	return 0;
-	    }
+	    };
 
 	    this.calculateAngle = function(objX, objY, curX, curY) {
 	    	var difX = objX - curX;
@@ -36,10 +38,15 @@ function main(){
     	};
 
     	this.calculatePos = function() {
-    		if(!this.wIsPressed && this.vel > 0)
+    		if(!this.wIsPressed && this.vel > 0){
     			this.vel -= 0.05;
-    		if(this.wIsPressed == 1)
-    			this.vel = 10;
+    		}
+    		if(this.vel<0){
+    			this.vel = 0;
+    		}
+    		if(this.wIsPressed == 1){
+    			this.vel = this.maxVel;
+    		}
     		this.wIsPressed = 0;
 
     		if(vel) {
@@ -59,7 +66,7 @@ function main(){
 			    	this.bullets.splice(i, 1);
 			    }
 			}
-    	}
+    	};
 
     	this.collideBullets = function(ship){
     		for(var i = 0; i < this.bullets.length; i++){
@@ -68,14 +75,14 @@ function main(){
 				if(this.bullets[i].isDead())
 					this.bullets.splice(i, 1);
 			}
-    	}
+    	};
 
     	this.hit = function(){
     		this.life-=10;
     		if(this.life <= 0)
     			return 1;
     		return 0;
-    	}
+    	};
 
     	this.draw = function(ctx, x, y) {
 		    ctx.save();
@@ -87,20 +94,29 @@ function main(){
 
 			if(this.life > 0){
 				ctx.beginPath();
-				ctx.moveTo(((x - this.img.width/2)-10)+this.life, y - this.img.height/2);
-				ctx.lineTo(((x - this.img.width/2)-10)+100, y - this.img.height/2);
+				ctx.moveTo(((x - this.img.width/2)-10)+this.life/2, y - this.img.height/2);
+				ctx.lineTo(((x - this.img.width/2)-10)+this.maxLife/2, y - this.img.height/2);
 				ctx.lineWidth = 4;
 				ctx.strokeStyle = "red";
 				ctx.stroke();
 				ctx.closePath();
 				ctx.beginPath();
 				ctx.moveTo((x - this.img.width/2)-10, y - this.img.height/2);
-				ctx.lineTo(((x - this.img.width/2)-10)+this.life, y - this.img.height/2);
+				ctx.lineTo(((x - this.img.width/2)-10)+this.life/2, y - this.img.height/2);
 				ctx.lineWidth = 4;
 				ctx.strokeStyle = "green";
 				ctx.stroke();
 				ctx.closePath();
 			}
+    	};
+
+    	this.update = function(mouseX, mouseY, cx, cy, enemies){
+    		ship.calculateAngle(mouseX, mouseY, cx, cy);
+			ship.calculatePos();
+			for(var i = 0; i < enemies.length; i++){
+				enemies[i].collideBullets(this);
+			}
+			ship.moveBullets(cx, cy);
     	};
 	}
 
@@ -115,12 +131,14 @@ function main(){
 	    this.ang = 0;
 	    this.bullets = [];
 	    this.life = life;
+	    this.maxLife = life;
+	    this.bulletCount = 0;
 
 	    this.isDead = function() {
 	    	if(this.life <= 0)
 	    		return 1;
 	    	return 0;
-	    }
+	    };
 
 	    this.calculateAngle = function(objX, objY, curX, curY) {
 	    	var difX = objX - curX;
@@ -132,39 +150,47 @@ function main(){
 		    	this.ang += Math.PI;
     	};
 
-    	this.calculatePos = function() {
-		    var movX = Math.cos(this.ang)*this.vel;
-			var movY = Math.sin(this.ang)*this.vel;
+    	this.calculatePos = function(ship) {
+    		if(Math.abs(ship.x - this.x) > 200 || Math.abs(ship.y - this.y) > 200){
+    			var movX = Math.cos(this.ang)*this.vel;
+				var movY = Math.sin(this.ang)*this.vel;
 
-			this.x += movX;
-			this.y += movY;
+				this.x += movX;
+				this.y += movY;
+    		} else {
+	    		if(this.bulletCount == 100) {
+					this.bullets.push(new Bullet(this.x - this.img.width/2, this.y - this.img.height/2, this.ang));
+					this.bulletCount = 0;
+				} else 
+					this.bulletCount++;
+    		}   
     	};
 
-    	this.moveBullets = function(cx, cy) {
+    	this.moveBullets = function(cx, cy, ship) {
     		for(var i = 0; i < this.bullets.length; i++){
 			    this.bullets[i].calculatePos();
-			    if((this.bullets[i].x > this.x + cx) || (this.bullets[i].x < this.x - cx) 
-			    	|| (this.bullets[i].y > this.y + cy) || (this.bullets[i].y < this.y - cy)){
+			    if((this.bullets[i].x > ship.x + cx) || (this.bullets[i].x < ship.x - cx) 
+			    	|| (this.bullets[i].y > ship.y + cy) || (this.bullets[i].y < ship.y - cy)){
 			    	this.bullets.splice(i, 1);
 			    }
 			}
-    	}
+    	};
 
     	this.collideBullets = function(ship){
     		for(var i = 0; i < this.bullets.length; i++){
     			if(!this.bullets[i].hitted)
-				    this.bullets[i].collide(ship);
+				    this.bullets[i].collideEnemy(ship);
 				if(this.bullets[i].isDead())
 					this.bullets.splice(i, 1);
 			}
-    	}
+    	};
 
     	this.hit = function(){
     		this.life-=10;
     		if(this.life <= 0)
     			return 1;
     		return 0;
-    	}
+    	};
 
     	this.draw = function(ctx, x, y) {
 		    ctx.save();
@@ -177,7 +203,7 @@ function main(){
 			if(this.life > 0){
 				ctx.beginPath();
 				ctx.moveTo(((x - this.img.width/2)-10)+this.life/2, y - this.img.height/2);
-				ctx.lineTo(((x - this.img.width/2)-10)+50, y - this.img.height/2);
+				ctx.lineTo(((x - this.img.width/2)-10)+this.maxLife/2, y - this.img.height/2);
 				ctx.lineWidth = 4;
 				ctx.strokeStyle = "red";
 				ctx.stroke();
@@ -191,6 +217,13 @@ function main(){
 				ctx.closePath();
 			}
     	};
+
+    	this.update = function(ship) {
+    		this.calculateAngle(ship.x, ship.y, this.x, this.y);
+			this.calculatePos(ship);
+			ship.collideBullets(this);
+			this.moveBullets(cx, cy, ship);
+    	};
 	}
 
 	function Bullet(x, y, ang){
@@ -199,8 +232,8 @@ function main(){
 		this.ang = ang;
 		this.vel = 10;
 		this.img = new Image();
-		this.img.width = 256;
-		this.img.height = 256; 
+		this.img.width = 128;
+		this.img.height = 128; 
 		this.explosion = [];
 	    this.explosionCount = 0;
 	    this.hitted = 0;
@@ -210,13 +243,12 @@ function main(){
 	    	if(this.explosionCount == this.explosionFrames)
 	    		return 1;
 	    	return 0;
-	    }
+	    };
 
 		this.calculatePos = function() {
 			if(this.hitted == 0){
 		    	var movX = Math.cos(this.ang)*this.vel;
 			    var movY = Math.sin(this.ang)*this.vel;
-
 			    this.x += movX;
 			    this.y += movY;
 			}
@@ -234,7 +266,21 @@ function main(){
 	    		this.hitted++;
 	    		obj.hit();
     		}
-    	}
+    	};
+
+    	this.collideEnemy = function(obj) {
+    		if((this.x < obj.x + obj.img.width/2 && this.x > obj.x - obj.img.width)
+    			&& (this.y < obj.y + obj.img.height/2 && this.y > obj.y - obj.img.height)){
+	    		for(var i = 0, j = 0; i < 15; i++) {
+	    			this.explosion[j] = "explosion/explosion_" + i + ".png";
+	    			this.explosion[j+1] = "explosion/explosion_" + i + ".png";
+	    			this.explosion[j+2] = "explosion/explosion_" + i + ".png";
+	    			j+=3;
+	    		}
+	    		this.hitted++;
+	    		obj.hit();
+    		}
+    	};
 
     	this.draw = function(ctx, x, y) {
     		if(this.hitted){
@@ -299,10 +345,17 @@ function main(){
 		    	ship.bullets[i].draw(ctx, cx + (ship.bullets[i].x - ship.x), cy + (ship.bullets[i].y - ship.y));
 		    }
 
-		    ctx.font = "30px Arial";
-			ctx.fillStyle = "red";
-			ctx.textAlign = "center";
-			ctx.fillText(ship.bullets.length, 10, 50);
+		    for(var j = 0; j < enemies.length; j++){
+		    	for(var i = 0; i < enemies[i].bullets.length; i++){
+					enemies[j].bullets[i].draw(ctx, cx + (enemies[j].bullets[i].x - ship.x) + enemies[j].img.width/2, cy + (enemies[j].bullets[i].y - ship.y) + enemies[i].img.height/2);
+					ctx.font = "30px Arial";
+					ctx.fillStyle = "red";
+					ctx.textAlign = "center";
+					ctx.fillText(enemies[j].bulletCount, 30, 50);
+				}
+			}
+
+		    
     	};
 
     	this.drawEnemies = function(ctx, cx, cy, ship, enemy) {
@@ -323,11 +376,11 @@ function main(){
 		    		enemy.draw(ctx, cx - (ship.x - enemy.x), cy - (ship.y - enemy.y));
 		    	}
 		    }
-    	}
+    	};
 	}
 
 	var map = new Mapa();
-	var ship = new SpaceShip(map.maxWidth/2, map.maxHeight/2, "nave-1.png", 10, 100);
+	var ship = new SpaceShip(map.maxWidth/2, map.maxHeight/2, "nave-1.png", 5, 100);
 	var enemies = [];
 	var numberOfEnemies = 1;
 
@@ -347,7 +400,7 @@ function main(){
 
 	document.addEventListener("click", mouseclickHandler, false);
 	function mouseclickHandler(e){
-		ship.bullets.push(new Bullet(ship.x, ship.y, ship.ang, ship.vel));
+		ship.bullets.push(new Bullet(ship.x, ship.y, ship.ang));
 	}
 
 	document.addEventListener("keydown", keydownHandler, false);
@@ -363,13 +416,9 @@ function main(){
 	}
 
 	function update(){
-		ship.calculateAngle(mouseX, mouseY, cx, cy);
-		ship.calculatePos();
-		ship.moveBullets(cx, cy);
+		ship.update(mouseX, mouseY, cx, cy, enemies);
 		for(var i = 0; i < numberOfEnemies; i++) {
-			enemies[i].calculateAngle(ship.x, ship.y, enemies[i].x, enemies[i].y);
-			enemies[i].calculatePos();
-			ship.collideBullets(enemies[i]);
+			enemies[i].update(ship);
 			if(enemies[i].isDead()) {
 				enemies.splice(i, 1);
 				numberOfEnemies--;
