@@ -151,7 +151,8 @@ function main(){
     	};
 
     	this.calculatePos = function(ship) {
-    		if(Math.abs(ship.x - this.x) > 200 || Math.abs(ship.y - this.y) > 200){
+    		if((Math.abs(ship.x - this.x) > 200 || Math.abs(ship.y - this.y) > 200)
+    			&& (Math.abs(ship.x - this.x) < cx && Math.abs(ship.y - this.y) < cy)){
     			var movX = Math.cos(this.ang)*this.vel;
 				var movY = Math.sin(this.ang)*this.vel;
 
@@ -346,12 +347,8 @@ function main(){
 		    }
 
 		    for(var j = 0; j < enemies.length; j++){
-		    	for(var i = 0; i < enemies[i].bullets.length; i++){
-					enemies[j].bullets[i].draw(ctx, cx + (enemies[j].bullets[i].x - ship.x) + enemies[j].img.width/2, cy + (enemies[j].bullets[i].y - ship.y) + enemies[i].img.height/2);
-					ctx.font = "30px Arial";
-					ctx.fillStyle = "red";
-					ctx.textAlign = "center";
-					ctx.fillText(enemies[j].bulletCount, 30, 50);
+		    	for(var i = 0; i < enemies[j].bullets.length; i++){
+					enemies[j].bullets[i].draw(ctx, cx + (enemies[j].bullets[i].x - ship.x) + enemies[j].img.width/2, cy + (enemies[j].bullets[i].y - ship.y) + enemies[j].img.height/2);
 				}
 			}
 
@@ -382,7 +379,7 @@ function main(){
 	var map = new Mapa();
 	var ship = new SpaceShip(map.maxWidth/2, map.maxHeight/2, "nave-1.png", 5, 100);
 	var enemies = [];
-	var numberOfEnemies = 1;
+	var numberOfEnemies = 5;
 
 	for(var i = 0; i < numberOfEnemies; i++){
     	var randomWidth =Math.floor(Math.random() * map.maxWidth);
@@ -422,11 +419,13 @@ function main(){
 			if(enemies[i].isDead()) {
 				enemies.splice(i, 1);
 				numberOfEnemies--;
+				/*var randomWidth =Math.floor(Math.random() * map.maxWidth);
+		    	var randomHeight =Math.floor(Math.random() * map.maxHeight);
+				enemies[i] = new Enemy(randomWidth, randomHeight, "nave-1.png", 2, 100);*/
 			}
 		}
 		draw();
 	}
 
 	var refreshIntervalId = setInterval(update, 10);
-}
-			
+}			
