@@ -4,7 +4,24 @@ function main(){
 	canvas.height = window.innerHeight;
 	var ctx = canvas.getContext("2d");
 	var cx = canvas.width/2;
-	var cy = canvas.height/2;  
+	var cy = canvas.height/2; 
+
+	function Player(ship) {
+		this.name = "Player1";
+		this.ship = ship;
+		this.exp = 0;
+
+		this.addEnemyExp = function(enemy) {
+			var enemyExp = enemy.level*100;
+			this.exp += enemyExp;
+		}
+
+		this.draw = function(ctx) {
+			ctx.font = "30px Arial";
+			ctx.fillStyle = "red";
+			ctx.fillText("Exp: " + this.exp, 10, 50);
+		}
+	}
 
 	function SpaceShip(x, y, src, vel, life) {
 		this.x = x/2;
@@ -120,19 +137,20 @@ function main(){
     	};
 	}
 
-	function Enemy(x, y, src, vel, life) {
+	function Enemy(x, y, src, vel, life, level) {
 		this.x = x/2;
 		this.y = y/2;
 	    this.img = new Image(); 
     	this.img.src = src;
-    	this.img.width = 50;
-    	this.img.height = 50;
+    	this.img.width = 40;
+    	this.img.height = 40;
 	    this.vel = vel;
 	    this.ang = 0;
 	    this.bullets = [];
 	    this.life = life;
 	    this.maxLife = life;
 	    this.bulletCount = 0;
+	    this.level = level;
 
 	    this.isDead = function() {
 	    	if(this.life <= 0)
@@ -204,14 +222,14 @@ function main(){
 			if(this.life > 0){
 				ctx.beginPath();
 				ctx.moveTo(((x - this.img.width/2)-10)+this.life/2, y - this.img.height/2);
-				ctx.lineTo(((x - this.img.width/2)-10)+this.maxLife/2, y - this.img.height/2);
+				ctx.lineTo(((x - this.img.width/2)-10)+this.maxLife/2*10, y - this.img.height/2);
 				ctx.lineWidth = 4;
 				ctx.strokeStyle = "red";
 				ctx.stroke();
 				ctx.closePath();
 				ctx.beginPath();
 				ctx.moveTo((x - this.img.width/2)-10, y - this.img.height/2);
-				ctx.lineTo(((x - this.img.width/2)-10)+this.life/2, y - this.img.height/2);
+				ctx.lineTo(((x - this.img.width/2)-10)+this.life/2*10, y - this.img.height/2);
 				ctx.lineWidth = 4;
 				ctx.strokeStyle = "green";
 				ctx.stroke();
@@ -298,12 +316,25 @@ function main(){
 				}
     		} else {
     			ctx.beginPath();
-				ctx.arc(x, y, 4, 0, 2 * Math.PI);
+				ctx.arc(x, y, 3, 0, 2 * Math.PI);
 			    ctx.fillStyle = "#ffffff";
 			    ctx.fill();
 			    ctx.closePath();
     		}
     	};
+	}
+
+	function Object(x, y) {
+		this.x = x;
+		this.y = y;
+		this.img = new Image();
+		this.img.src = "nave-1-dead.png";
+		this.img.width = 40;
+		this.img.height = 40; 
+
+		this.draw = function(ctx, x, y) {
+			ctx.drawImage(this.img, x - this.img.width/2, y - this.img.height/2, this.img.width, this.img.height);
+		}
 	}
 
 	function Mapa(){
@@ -312,11 +343,10 @@ function main(){
 		this.maxWidth = 5000;
 		this.maxHeight = 3000;
 		this.img = new Image();
-		this.img.src = "universe.jpg"
+		this.img.src = "universe.jpg";
 
-		this.draw = function(ctx, cx, cy) {
-
-			var minx = 0;
+		this.draw = function(ctx, cx, cy, ship) {
+			/*var minx = 0;
 			var miny = 0;
 			var maxx = 0;
 			var maxy = 0;
@@ -329,12 +359,12 @@ function main(){
 				miny = cy - ship.y;
 			}
 
-			/*ctx.beginPath();
+			ctx.beginPath();
 			ctx.rect(minx, miny, this.maxWidth - (ship.x + cx), this.maxHeight - (ship.y + cy));
 		    ctx.fillStyle = "#ffffff";
 		    ctx.fill();
 		    ctx.closePath();*/
-		    ctx.drawImage(this.img, cx - ship.x, cy - ship.y, this.maxWidth - (ship.x + cx), this.maxHeight - (ship.y + cy));
+		    ctx.drawImage(this.img, cx - ship.x, cy - ship.y);
 
 		    ship.draw(ctx, cx, cy);
 
@@ -350,6 +380,10 @@ function main(){
 		    	for(var i = 0; i < enemies[j].bullets.length; i++){
 					enemies[j].bullets[i].draw(ctx, cx + (enemies[j].bullets[i].x - ship.x) + enemies[j].img.width/2, cy + (enemies[j].bullets[i].y - ship.y) + enemies[j].img.height/2);
 				}
+			}
+
+			for(var i = 0; i < objects.length; i++) {
+				objects[i].draw(ctx, cx + (objects[i].x - ship.x) + objects[i].img.width/2,  cy + (objects[i].y - ship.y) + objects[i].img.height/2);
 			}
 
 		    
@@ -378,13 +412,15 @@ function main(){
 
 	var map = new Mapa();
 	var ship = new SpaceShip(map.maxWidth/2, map.maxHeight/2, "nave-1.png", 5, 100);
+	var player = new Player(ship);
 	var enemies = [];
 	var numberOfEnemies = 5;
+	var objects = [];
 
 	for(var i = 0; i < numberOfEnemies; i++){
     	var randomWidth =Math.floor(Math.random() * map.maxWidth);
     	var randomHeight =Math.floor(Math.random() * map.maxHeight);
-		enemies[i] = new Enemy(randomWidth, randomHeight, "nave-1.png", 2, 100);
+		enemies[i] = new Enemy(randomWidth, randomHeight, "nave-1.png", 2, 10, 1);
 	}
 
 	var mouseX = 0;
@@ -397,31 +433,32 @@ function main(){
 
 	document.addEventListener("click", mouseclickHandler, false);
 	function mouseclickHandler(e){
-		ship.bullets.push(new Bullet(ship.x, ship.y, ship.ang));
+		player.ship.bullets.push(new Bullet(ship.x, ship.y, ship.ang));
 	}
 
 	document.addEventListener("keydown", keydownHandler, false);
 	function keydownHandler(e){
 		if(e.keyCode == 87){
-			ship.wIsPressed = 1;
+			player.ship.wIsPressed = 1;
 		}
 	}
 
 	function draw() {
 		ctx.clearRect(0, 0, cx*2, cy*2);
-		map.draw(ctx, cx, cy);
+		map.draw(ctx, cx, cy, player.ship);
+		player.draw(ctx);
 	}
 
 	function update(){
-		ship.update(mouseX, mouseY, cx, cy, enemies);
+		player.ship.update(mouseX, mouseY, cx, cy, enemies);
 		for(var i = 0; i < numberOfEnemies; i++) {
-			enemies[i].update(ship);
+			enemies[i].update(player.ship);
 			if(enemies[i].isDead()) {
+				player.addEnemyExp(enemies[i]);
+				objects.push(new Object(enemies[i].x, enemies[i].y));
 				enemies.splice(i, 1);
 				numberOfEnemies--;
-				/*var randomWidth =Math.floor(Math.random() * map.maxWidth);
-		    	var randomHeight =Math.floor(Math.random() * map.maxHeight);
-				enemies[i] = new Enemy(randomWidth, randomHeight, "nave-1.png", 2, 100);*/
+
 			}
 		}
 		draw();
