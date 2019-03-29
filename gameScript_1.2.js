@@ -127,13 +127,21 @@ function main(){
 			}
     	};
 
-    	this.update = function(mouseX, mouseY, cx, cy, enemies){
+    	this.update = function(mouseX, mouseY, cx, cy, enemies, objects){
     		ship.calculateAngle(mouseX, mouseY, cx, cy);
 			ship.calculatePos();
 			for(var i = 0; i < enemies.length; i++){
 				enemies[i].collideBullets(this);
 			}
 			ship.moveBullets(cx, cy);
+
+			for(var i = 0; i < objects.length; i++){
+				if(Math.abs(this.x - objects[i].x) < 100 && Math.abs(this.y - objects[i].y) < 100)
+					objects[i].interact(cx, cy, this);
+				else {
+					objects[i].interacting = 0;
+				}
+			}
     	};
 	}
 
@@ -324,16 +332,38 @@ function main(){
     	};
 	}
 
-	function Object(x, y) {
+	function Object(x, y, ang) {
 		this.x = x;
 		this.y = y;
+		this.ang = ang;
 		this.img = new Image();
 		this.img.src = "nave-1-dead.png";
 		this.img.width = 40;
-		this.img.height = 40; 
+		this.img.height = 40;
+		this.interactX = 0;
+		this.interactY = 0;
+		this.interacting = 0;
+
+		this.interact = function(cx, cy, ship) {
+			this.interactX = cx + (this.x - ship.x);
+			this.interactY = cy + (this.y - ship.y);
+			this.interacting = 1;
+			
+		}
 
 		this.draw = function(ctx, x, y) {
+			ctx.save();
+			ctx.translate(x, y);
+			ctx.rotate(this.ang + Math.PI/2);
+			ctx.translate(-x, -y);
 			ctx.drawImage(this.img, x - this.img.width/2, y - this.img.height/2, this.img.width, this.img.height);
+			ctx.restore();
+
+			if(this.interacting){
+				ctx.font = "30px Arial";
+				ctx.fillStyle = "red";
+				ctx.fillText("Hello", cx + (this.x - ship.x), cy + (this.y - ship.y));
+			}
 		}
 	}
 
@@ -346,30 +376,16 @@ function main(){
 		this.img.src = "universe.jpg";
 
 		this.draw = function(ctx, cx, cy, ship) {
-			/*var minx = 0;
-			var miny = 0;
-			var maxx = 0;
-			var maxy = 0;
-
-			if(ship.x < cx){
-				minx = cx - ship.x;
-			}
-
-			if(ship.y < cy){
-				miny = cy - ship.y;
-			}
-
-			ctx.beginPath();
-			ctx.rect(minx, miny, this.maxWidth - (ship.x + cx), this.maxHeight - (ship.y + cy));
-		    ctx.fillStyle = "#ffffff";
-		    ctx.fill();
-		    ctx.closePath();*/
 		    ctx.drawImage(this.img, cx - ship.x, cy - ship.y);
 
 		    ship.draw(ctx, cx, cy);
 
 		    for(var i = 0; i < numberOfEnemies; i++){
 				this.drawEnemies(ctx, cx, cy, ship, enemies[i]);
+			}
+
+			for(var i = 0; i < objects.length; i++) {
+				objects[i].draw(ctx, cx + (objects[i].x - ship.x),  cy + (objects[i].y - ship.y));
 			}
 
 		    for(var i = 0; i < ship.bullets.length; i++){
@@ -382,11 +398,6 @@ function main(){
 				}
 			}
 
-			for(var i = 0; i < objects.length; i++) {
-				objects[i].draw(ctx, cx + (objects[i].x - ship.x) + objects[i].img.width/2,  cy + (objects[i].y - ship.y) + objects[i].img.height/2);
-			}
-
-		    
     	};
 
     	this.drawEnemies = function(ctx, cx, cy, ship, enemy) {
@@ -450,15 +461,14 @@ function main(){
 	}
 
 	function update(){
-		player.ship.update(mouseX, mouseY, cx, cy, enemies);
+		player.ship.update(mouseX, mouseY, cx, cy, enemies, objects);
 		for(var i = 0; i < numberOfEnemies; i++) {
 			enemies[i].update(player.ship);
 			if(enemies[i].isDead()) {
 				player.addEnemyExp(enemies[i]);
-				objects.push(new Object(enemies[i].x, enemies[i].y));
+				objects.push(new Object(enemies[i].x, enemies[i].y, enemies[i].ang));
 				enemies.splice(i, 1);
 				numberOfEnemies--;
-
 			}
 		}
 		draw();
