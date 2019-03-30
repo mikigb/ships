@@ -101,6 +101,37 @@ function main(){
     		return 0;
     	};
 
+    	this.nearObjects = function(objects) {
+    		var nearObjects = [];
+    		var nearestObject;
+    		var hip1;
+    		var idNearestObject;
+
+			for(var i = 0; i < objects.length; i++){
+				if(Math.abs(this.x - objects[i].x) < 100 && Math.abs(this.y - objects[i].y) < 100){
+					if(nearestObject == null){
+						nearestObject = objects[i];
+						hip1 = Math.sqrt(Math.pow(nearestObject.x, 2) + Math.pow(nearestObject.y, 2));
+						idNearestObject = i;
+					} else {
+						var hip2 = Math.sqrt(Math.pow(objects[i].x, 2) + Math.pow(objects[i].y, 2));
+						if(hip2 < hip1) {
+							objects[idNearestObject].interacting = 0;
+							hip1 = hip2;
+							nearestObject = nearObjects[i];
+						} else {
+							objects[i].interacting = 0;
+						}
+					}
+				} else {
+					objects[i].interacting = 0;
+				}
+			}
+				
+			if(nearestObject != null)
+				nearestObject.interact(cx, cy, this);
+    	}
+
     	this.draw = function(ctx, x, y) {
 		    ctx.save();
 			ctx.translate(x, y);
@@ -128,20 +159,13 @@ function main(){
     	};
 
     	this.update = function(mouseX, mouseY, cx, cy, enemies, objects){
-    		ship.calculateAngle(mouseX, mouseY, cx, cy);
-			ship.calculatePos();
+    		this.calculateAngle(mouseX, mouseY, cx, cy);
+			this.calculatePos();
 			for(var i = 0; i < enemies.length; i++){
 				enemies[i].collideBullets(this);
 			}
-			ship.moveBullets(cx, cy);
-
-			for(var i = 0; i < objects.length; i++){
-				if(Math.abs(this.x - objects[i].x) < 100 && Math.abs(this.y - objects[i].y) < 100)
-					objects[i].interact(cx, cy, this);
-				else {
-					objects[i].interacting = 0;
-				}
-			}
+			this.moveBullets(cx, cy);
+			this.nearObjects(objects);
     	};
 	}
 
@@ -159,6 +183,7 @@ function main(){
 	    this.maxLife = life;
 	    this.bulletCount = 0;
 	    this.level = level;
+	    this.isMoving = 0;
 
 	    this.isDead = function() {
 	    	if(this.life <= 0)
@@ -184,12 +209,16 @@ function main(){
 
 				this.x += movX;
 				this.y += movY;
+
+				this.isMoving = 1;
     		} else {
 	    		if(this.bulletCount == 100) {
 					this.bullets.push(new Bullet(this.x - this.img.width/2, this.y - this.img.height/2, this.ang));
 					this.bulletCount = 0;
 				} else 
 					this.bulletCount++;
+
+				this.isMoving = 0;
     		}   
     	};
 
@@ -332,10 +361,11 @@ function main(){
     	};
 	}
 
-	function Object(x, y, ang) {
+	function Object(x, y, ang, vel) {
 		this.x = x;
 		this.y = y;
 		this.ang = ang;
+		this.vel = vel;
 		this.img = new Image();
 		this.img.src = "nave-1-dead.png";
 		this.img.width = 40;
@@ -343,6 +373,23 @@ function main(){
 		this.interactX = 0;
 		this.interactY = 0;
 		this.interacting = 0;
+
+		this.calculatePos = function() {
+    		if(this.vel > 0){
+    			this.vel -= 0.01;
+    		}
+    		if(this.vel<=0){
+    			this.vel = 0;
+    		}
+
+    		if(vel>0) {
+			    var movX = Math.cos(this.ang)*this.vel;
+				var movY = Math.sin(this.ang)*this.vel;
+
+				this.x += movX;
+				this.y += movY;
+			}
+    	};
 
 		this.interact = function(cx, cy, ship) {
 			this.interactX = cx + (this.x - ship.x);
@@ -360,10 +407,14 @@ function main(){
 			ctx.restore();
 
 			if(this.interacting){
-				ctx.font = "30px Arial";
-				ctx.fillStyle = "red";
-				ctx.fillText("Hello", cx + (this.x - ship.x), cy + (this.y - ship.y));
+				ctx.font = "italic 30px Roboto";
+				ctx.fillStyle = "white";
+				ctx.fillText("Loot", cx + (this.x - ship.x), cy + (this.y - ship.y));
 			}
+		}
+
+		this.update = function() {
+			this.calculatePos();
 		}
 	}
 
@@ -466,11 +517,18 @@ function main(){
 			enemies[i].update(player.ship);
 			if(enemies[i].isDead()) {
 				player.addEnemyExp(enemies[i]);
-				objects.push(new Object(enemies[i].x, enemies[i].y, enemies[i].ang));
+				if(enemies[i].isMoving == 0)
+					enemies[i].vel = 0;
+				objects.push(new Object(enemies[i].x, enemies[i].y, enemies[i].ang, enemies[i].vel));
 				enemies.splice(i, 1);
 				numberOfEnemies--;
 			}
 		}
+
+		for(var i = 0; i < objects.length; i++) {
+			objects[i].update();
+		}
+
 		draw();
 	}
 
