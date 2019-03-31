@@ -17,9 +17,21 @@ function main(){
 		}
 
 		this.draw = function(ctx) {
-			ctx.font = "30px Arial";
-			ctx.fillStyle = "red";
-			ctx.fillText("Exp: " + this.exp, 10, 50);
+			ctx.font = "15px Arial";
+			ctx.fillStyle = "#ffffff";
+			ctx.fillText("Exp: " + this.exp, 10, 30);
+			ctx.font = "15px Arial";
+			ctx.fillStyle = "#ffffff";
+			ctx.fillText("shipX: " + this.ship.x, 10, 60);
+			ctx.font = "15px Arial";
+			ctx.fillStyle = "#ffffff";
+			ctx.fillText("shipY: " + this.ship.y, 10, 90);
+			ctx.font = "15px Arial";
+			ctx.fillStyle = "#ffffff";
+			ctx.fillText("mapW: " + map.img.width, 10, 120);
+			ctx.font = "15px Arial";
+			ctx.fillStyle = "#ffffff";
+			ctx.fillText("mapH: " + map.img.height, 10, 150);
 		}
 	}
 
@@ -421,8 +433,8 @@ function main(){
 	function Mapa(){
 		this.minWidth = 0;
 		this.minHeight = 0;
-		this.maxWidth = 5000;
-		this.maxHeight = 3000;
+		this.maxWidth = 6000;
+		this.maxHeight = 1918;
 		this.img = new Image();
 		this.img.src = "universe.jpg";
 
@@ -449,6 +461,8 @@ function main(){
 				}
 			}
 
+			this.drawMap(ship);
+
     	};
 
     	this.drawEnemies = function(ctx, cx, cy, ship, enemy) {
@@ -470,6 +484,58 @@ function main(){
 		    	}
 		    }
     	};
+
+    	this.drawMap = function(ship) {
+    		var mapInitX = (cx*2) - (cx/4);
+    		var mapInitY = 10;
+    		var mapFinalX = cx/4 - 10;
+    		var mapFinalY = cy/4;
+
+    		ctx.beginPath();
+    		ctx.rect(mapInitX, mapInitY, mapFinalX, mapFinalY);
+    		ctx.fillStyle = "#000000";
+			ctx.fill();
+			ctx.closePath();
+
+    		ctx.beginPath();
+    		ctx.rect(mapInitX, mapInitY, mapFinalX, mapFinalY);
+    		ctx.strokeStyle = "#ffffff";
+			ctx.stroke();
+			ctx.closePath();
+
+			var maxMapWidth = mapInitX - mapFinalX;
+			var maxMapHeight = mapFinalY - mapInitY;
+			var shipLocX = (ship.x*maxMapWidth)/((this.maxWidth*6) + cx*3);			// NO IDEA HOW THIS WORKS
+			var shipLocY = (ship.y*maxMapHeight)/(this.maxHeight - cy/2);			// BUT IT WORKS
+
+			ctx.beginPath();
+			ctx.arc(mapInitX + shipLocX, mapInitY + shipLocY, 3, 0, 2 * Math.PI);
+			ctx.fillStyle = "#ffffff";
+			ctx.fill();
+			ctx.closePath();
+
+			for(var i = 0; i < enemies.length; i++){
+				var shipLocX = (enemies[i].x*maxMapWidth)/((this.maxWidth*6) + cx*3);			// NO IDEA HOW THIS WORKS
+				var shipLocY = (enemies[i].y*maxMapHeight)/(this.maxHeight - cy/2);			// BUT IT WORKS
+
+				ctx.beginPath();
+				ctx.arc(mapInitX + shipLocX, mapInitY + shipLocY, 3, 0, 2 * Math.PI);
+				ctx.fillStyle = "red";
+				ctx.fill();
+				ctx.closePath();
+			}
+
+			for(var i = 0; i < objects.length; i++){
+				var shipLocX = (objects[i].x*maxMapWidth)/((this.maxWidth*6) + cx*3);			// NO IDEA HOW THIS WORKS
+				var shipLocY = (objects[i].y*maxMapHeight)/(this.maxHeight - cy/2);			// BUT IT WORKS
+
+				ctx.beginPath();
+				ctx.arc(mapInitX + shipLocX, mapInitY + shipLocY, 3, 0, 2 * Math.PI);
+				ctx.fillStyle = "green";
+				ctx.fill();
+				ctx.closePath();
+			}
+    	}
 	}
 
 	var map = new Mapa();
@@ -480,8 +546,8 @@ function main(){
 	var objects = [];
 
 	for(var i = 0; i < numberOfEnemies; i++){
-    	var randomWidth =Math.floor(Math.random() * map.maxWidth);
-    	var randomHeight =Math.floor(Math.random() * map.maxHeight);
+    	var randomWidth =Math.floor(Math.random() * map.maxWidth*2);
+    	var randomHeight =Math.floor(Math.random() * map.maxHeight*2);
 		enemies[i] = new Enemy(randomWidth, randomHeight, "nave-1.png", 2, 10, 1);
 	}
 
