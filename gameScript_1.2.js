@@ -5,6 +5,7 @@ function main(){
 	var ctx = canvas.getContext("2d");
 	var cx = canvas.width/2;
 	var cy = canvas.height/2; 
+	var keypressed = "none";
 
 	function Player(ship) {
 		this.name = "Player1";
@@ -19,19 +20,14 @@ function main(){
 		this.draw = function(ctx) {
 			ctx.font = "15px Arial";
 			ctx.fillStyle = "#ffffff";
+			ctx.textAlign = "left";
 			ctx.fillText("Exp: " + this.exp, 10, 30);
-			ctx.font = "15px Arial";
-			ctx.fillStyle = "#ffffff";
 			ctx.fillText("shipX: " + this.ship.x, 10, 60);
-			ctx.font = "15px Arial";
-			ctx.fillStyle = "#ffffff";
 			ctx.fillText("shipY: " + this.ship.y, 10, 90);
-			ctx.font = "15px Arial";
-			ctx.fillStyle = "#ffffff";
 			ctx.fillText("mapW: " + map.img.width, 10, 120);
-			ctx.font = "15px Arial";
-			ctx.fillStyle = "#ffffff";
 			ctx.fillText("mapH: " + map.img.height, 10, 150);
+			ctx.fillText("Key pressed: " + keypressed, 10, 180);
+			ctx.fillText("Nearest object: " + this.ship.idNearestObject, 10, 210);
 		}
 	}
 
@@ -49,6 +45,8 @@ function main(){
 	    this.life = life;
 	    this.maxLife = life;
 	    this.wIsPressed = 0;
+	    this.idNearestObject = -1;
+	    this.inventoryObjects = [];
 
 	    this.isDead = function() {
 	    	if(this.life <= 0)
@@ -117,18 +115,17 @@ function main(){
     		var nearObjects = [];
     		var nearestObject;
     		var hip1;
-    		var idNearestObject;
 
 			for(var i = 0; i < objects.length; i++){
 				if(Math.abs(this.x - objects[i].x) < 100 && Math.abs(this.y - objects[i].y) < 100){
 					if(nearestObject == null){
 						nearestObject = objects[i];
 						hip1 = Math.sqrt(Math.pow(nearestObject.x, 2) + Math.pow(nearestObject.y, 2));
-						idNearestObject = i;
+						this.idNearestObject = i;
 					} else {
 						var hip2 = Math.sqrt(Math.pow(objects[i].x, 2) + Math.pow(objects[i].y, 2));
 						if(hip2 < hip1) {
-							objects[idNearestObject].interacting = 0;
+							objects[this.idNearestObject].interacting = 0;
 							hip1 = hip2;
 							nearestObject = nearObjects[i];
 						} else {
@@ -142,6 +139,14 @@ function main(){
 				
 			if(nearestObject != null)
 				nearestObject.interact(cx, cy, this);
+			else
+				this.idNearestObject = -1;
+    	}
+
+    	this.addInventoryObject = function() {
+    		if(this.idNearestObject >= 0) {
+    			this.inventoryObjects[this.inventoryObjects.length] = new Object("ruby", 10, "ruby.png");
+    		}
     	}
 
     	this.draw = function(ctx, x, y) {
@@ -294,7 +299,7 @@ function main(){
     	};
 	}
 
-	function Bullet(x, y, ang){
+	function Bullet(x, y, ang) {
 		this.x = x;
 		this.y = y;
 		this.ang = ang;
@@ -371,9 +376,18 @@ function main(){
 			    ctx.closePath();
     		}
     	};
+	} 
+
+	function Object(name, value, src) {
+		this.name = name;
+		this.value = value;
+		this.img = new Image(); 
+    	this.img.src = src;
+    	this.img.width = 50;
+    	this.img.height = 40;
 	}
 
-	function Object(x, y, ang, vel) {
+	function DeadEnemy(x, y, ang, vel) {
 		this.x = x;
 		this.y = y;
 		this.ang = ang;
@@ -385,6 +399,14 @@ function main(){
 		this.interactX = 0;
 		this.interactY = 0;
 		this.interacting = 0;
+		this.objects = [];
+
+		this.generateObjects = function() {
+			var numObjects = Math.floor((Math.random() * 3) + 1);
+			for(var i = 0; i < numObjects; i++) {
+				this.objects[i] = new Object("ruby", 100, "ruby.png");
+			}
+		}
 
 		this.calculatePos = function() {
     		if(this.vel > 0){
@@ -426,20 +448,59 @@ function main(){
 		}
 
 		this.update = function() {
-			this.calculatePos();
+			if(this.objects.length == 0)
+				this.generateObjects();
+
+			if(this.vel != 0)
+				this.calculatePos();
 		}
 	}
 
-	function Mapa(){
+	function Mapa() {
 		this.minWidth = 0;
 		this.minHeight = 0;
 		this.maxWidth = 6000;
 		this.maxHeight = 1918;
 		this.img = new Image();
-		this.img.src = "universe.jpg";
+		this.img.src = "chunk.jpg";
+		this.colorIds = [];
+		this.chunkSize = 200;
 
-		this.draw = function(ctx, cx, cy, ship) {
-		    ctx.drawImage(this.img, cx - ship.x, cy - ship.y);
+		this.generateColorIds = function() {
+			var k = 0;
+			for(var i = 0; i < this.maxWidth; i+=this.chunkSize) {
+		    	for(var j = 0; j < this.maxHeight; j+=this.chunkSize) {
+		    		this.colorIds[k] = this.getRandomColor();
+		    		k++;
+		    	}
+		    }
+		}
+
+		this.getRandomColor = function() {
+			var letters = '0123456789ABCDEF';
+			var color = '#';
+			for (var i = 0; i < 6; i++) {
+				color += letters[Math.floor(Math.random() * 16)];
+			}
+			return color;
+		}
+
+		this.draw = function(ctx, cx, cy, ship, enemies) {
+		    //ctx.drawImage(this.img, cx - ship.x, cy - ship.y);
+
+			var k = 0;
+		    for(var i = 0; i < this.maxWidth; i+=this.chunkSize) {
+		    	for(var j = 0; j < this.maxHeight; j+=this.chunkSize) {
+		    		ctx.beginPath();
+		    		//ctx.rect(i - cx - ship.x, j - cy - ship.y, i + 200 - ship.x, j + 200 - ship.y);
+		    		ctx.drawImage(this.img, i - cx - ship.x, j - cy - ship.y);
+		    		ctx.fillStyle = this.colorIds[k];
+					ctx.fill();
+					ctx.closePath();
+					k++;
+		    	}
+		    }
+		    
 
 		    ship.draw(ctx, cx, cy);
 
@@ -447,8 +508,8 @@ function main(){
 				this.drawEnemies(ctx, cx, cy, ship, enemies[i]);
 			}
 
-			for(var i = 0; i < objects.length; i++) {
-				objects[i].draw(ctx, cx + (objects[i].x - ship.x),  cy + (objects[i].y - ship.y));
+			for(var i = 0; i < deadEnemies.length; i++) {
+				deadEnemies[i].draw(ctx, cx + (deadEnemies[i].x - ship.x),  cy + (deadEnemies[i].y - ship.y));
 			}
 
 		    for(var i = 0; i < ship.bullets.length; i++){
@@ -461,7 +522,7 @@ function main(){
 				}
 			}
 
-			this.drawMap(ship);
+			this.drawMiniMap(ship, enemies);
 
     	};
 
@@ -485,7 +546,7 @@ function main(){
 		    }
     	};
 
-    	this.drawMap = function(ship) {
+    	this.drawMiniMap = function(ship, enemies) {
     		var mapInitX = (cx*2) - (cx/4);
     		var mapInitY = 10;
     		var mapFinalX = cx/4 - 10;
@@ -497,16 +558,14 @@ function main(){
 			ctx.fill();
 			ctx.closePath();
 
-    		ctx.beginPath();
-    		ctx.rect(mapInitX, mapInitY, mapFinalX, mapFinalY);
-    		ctx.strokeStyle = "#ffffff";
-			ctx.stroke();
-			ctx.closePath();
-
 			var maxMapWidth = mapInitX - mapFinalX;
 			var maxMapHeight = mapFinalY - mapInitY;
-			var shipLocX = (ship.x*maxMapWidth)/((this.maxWidth*6) + cx*3);			// NO IDEA HOW THIS WORKS
-			var shipLocY = (ship.y*maxMapHeight)/(this.maxHeight - cy/2);			// BUT IT WORKS
+
+			var relationX = maxMapWidth/(this.maxWidth*6 + cx*3);		// NO IDEA HOW THIS WORKS
+			var relationY = maxMapHeight/(this.maxHeight - cy/2);		// BUT IT WORKS
+
+			var shipLocX = ship.x*relationX;
+			var shipLocY = ship.y*relationY;
 
 			ctx.beginPath();
 			ctx.arc(mapInitX + shipLocX, mapInitY + shipLocY, 3, 0, 2 * Math.PI);
@@ -515,8 +574,8 @@ function main(){
 			ctx.closePath();
 
 			for(var i = 0; i < enemies.length; i++){
-				var shipLocX = (enemies[i].x*maxMapWidth)/((this.maxWidth*6) + cx*3);			// NO IDEA HOW THIS WORKS
-				var shipLocY = (enemies[i].y*maxMapHeight)/(this.maxHeight - cy/2);			// BUT IT WORKS
+				var shipLocX = enemies[i].x*relationX;
+				var shipLocY = enemies[i].y*relationY;
 
 				ctx.beginPath();
 				ctx.arc(mapInitX + shipLocX, mapInitY + shipLocY, 3, 0, 2 * Math.PI);
@@ -525,9 +584,9 @@ function main(){
 				ctx.closePath();
 			}
 
-			for(var i = 0; i < objects.length; i++){
-				var shipLocX = (objects[i].x*maxMapWidth)/((this.maxWidth*6) + cx*3);			// NO IDEA HOW THIS WORKS
-				var shipLocY = (objects[i].y*maxMapHeight)/(this.maxHeight - cy/2);			// BUT IT WORKS
+			for(var i = 0; i < deadEnemies.length; i++){
+				var shipLocX = deadEnemies[i].x*relationX;
+				var shipLocY = deadEnemies[i].y*relationY;
 
 				ctx.beginPath();
 				ctx.arc(mapInitX + shipLocX, mapInitY + shipLocY, 3, 0, 2 * Math.PI);
@@ -535,19 +594,192 @@ function main(){
 				ctx.fill();
 				ctx.closePath();
 			}
+
+			ctx.beginPath();
+			ctx.lineWidth = 2;
+    		ctx.rect(mapInitX, mapInitY, mapFinalX, mapFinalY);
+    		ctx.strokeStyle = "#ffffff";
+			ctx.stroke();
+			ctx.closePath();
     	}
 	}
 
+	function Menu() {
+		this.isSelected = 0;
+		this.numCampos = 4;
+		this.nameCampos = ["SPACESHIP", "MISSIONS", "OPTIONS"];
+		this.drawOption = 1;
+		this.menuInitX = cx/2;
+		this.menuInitY = cy/2;
+		this.menuFinalX = cx;
+		this.menuFinalY = cy;
+		this.ship = new Menu_ShipOption();
+
+		this.calculateClick = function(posX, posY) {
+			var i = 0;
+			if(posY < this.menuInitY + this.menuFinalY/12) {
+				for(i = 0; i < this.numCampos; i++){
+			    	if(posX > this.menuInitX + (this.menuFinalX/4*i) 
+			    		&& posY > this.menuInitY 
+			    		&& posX < this.menuInitX + (this.menuFinalX/4*i) + this.menuFinalX/4 
+			    		&& posY < this.menuInitY + this.menuFinalY/12){
+			    		if(this.drawOption != i + 1) {
+			    			this.drawOption = i + 1;
+			    			this.ship.drawOption = 1;
+			    		}
+			    	} 
+				} 
+			} else 
+				this.ship.calculateClick(posX, posY);
+		}
+
+		this.draw = function(ctx) {
+			if(this.isSelected) {
+	    		ctx.globalAlpha = 0.7;
+	    		ctx.beginPath();
+	    		ctx.rect(this.menuInitX, this.menuInitY, this.menuFinalX, this.menuFinalY);
+	    		ctx.fillStyle = "#ffffff";
+				ctx.fill();
+				ctx.closePath();
+				ctx.globalAlpha = 1;
+
+				ctx.lineWidth = 1;
+				ctx.strokeStyle = "#000000";
+				ctx.font = "15px Arial";
+				ctx.fillStyle = "#000000";
+				ctx.textAlign = "center";
+
+				var i = 0;
+				var j = 1;
+				for(i = 0; i < this.numCampos; i++, j+=2){
+					ctx.beginPath();
+					ctx.rect(this.menuInitX + (this.menuFinalX/4*i), this.menuInitY, this.menuFinalX/4, this.menuFinalY/12);
+					ctx.fillStyle = "#ffffff";
+					ctx.fill();
+					ctx.rect(this.menuInitX + (this.menuFinalX/4*i), this.menuInitY, this.menuFinalX/4, this.menuFinalY/12); 		
+					ctx.stroke();
+					ctx.closePath();
+					ctx.fillStyle = "#000000";
+					if(this.drawOption == i + 1) {
+						ctx.font = "bold 15px Arial";
+						ctx.fillStyle = "#DF013A";
+					}
+					ctx.fillText(this.nameCampos[i], this.menuInitX + (this.menuFinalX/8*j), this.menuInitY + this.menuFinalY/18);
+					ctx.font = "15px Arial";
+					ctx.fillStyle = "#000000";
+				}
+
+				ctx.beginPath();
+				ctx.lineWidth = 1;
+	    		ctx.rect(this.menuInitX, this.menuInitY, this.menuFinalX, this.menuFinalY);
+	    		ctx.strokeStyle = "#000000";
+				ctx.stroke();
+				ctx.closePath();
+				//ctx.fillText(this.drawOption, cx, cy);
+
+				if(this.drawOption == 1) 
+					this.ship.draw();
+			}
+		}
+	}
+
+	function Menu_ShipOption() {
+		this.menuInitX = cx/2 + 10;
+		this.menuInitY = (cy/2 + cy/12) + 10;
+		this.menuOptionHeight = cy/12;
+		this.menuFinalX = cx/4 - 20;
+		this.numCampos = 10;
+		this.nameCampos = ["statistics", "armament", "appearance", "inventory", "crew"];
+		this.drawOption = 1;
+		this.showCaseInitX = cx/2 + 10 + cx/4;
+		this.showCaseInitY = (cy/2 + cy/12) + 10;
+		this.showCaseFinalX = cx - 20 - cx/2 + cx/4;
+		this.showCaseFinalY = (cy - 10 - (cy/2 + cy/12) + 10) * 2;
+		this.inventory = new Menu_ShipInventory();
+
+		this.calculateClick = function(posX, posY) {
+			var i = 0;
+			for(i = 0; i < this.numCampos; i++){
+		    	if(posX > this.menuInitX 
+		    		&& posY > this.menuInitY + this.menuOptionHeight*i 
+		    		&& posX < this.menuInitX + this.menuFinalX 
+		    		&& posY < this.menuInitY + this.menuOptionHeight*i + this.menuOptionHeight){
+		    		this.drawOption = i + 1;
+		    	}
+			}
+		}
+
+		this.draw = function() {
+			var i = 0;
+			var j = 1;
+			for(i = 0; i < this.numCampos; i++, j+=2){
+				ctx.beginPath();
+		    	ctx.rect(this.menuInitX, this.menuInitY + this.menuOptionHeight*i, this.menuFinalX, this.menuOptionHeight);
+		    	ctx.fillStyle = "#ffffff";
+				ctx.fill();
+				ctx.rect(this.menuInitX, this.menuInitY + this.menuOptionHeight*i, this.menuFinalX, this.menuOptionHeight); 		
+				ctx.stroke();
+				ctx.closePath();
+				ctx.fillStyle = "#000000";
+				if(this.drawOption == i + 1) {
+					ctx.font = "bold 15px Arial";
+					ctx.fillStyle = "#DF013A";
+				}
+				ctx.fillText(this.nameCampos[i], this.menuInitX + this.menuFinalX/2, this.menuInitY + this.menuOptionHeight/2*j + 5);
+				ctx.font = "15px Arial";
+				ctx.fillStyle = "#000000";
+			}
+
+			ctx.beginPath();
+			ctx.rect(this.showCaseInitX, this.showCaseInitY, this.showCaseFinalX, this.showCaseFinalY); 		
+			ctx.stroke();
+			ctx.closePath();
+
+			if(this.drawOption == 4)
+				this.inventory.draw();
+		}
+	}
+
+	function Menu_ShipInventory() {
+		this.menuInitX = cx/2 + 10 + cx/4 + 15;
+		this.menuInitY = (cy/2 + cy/12) + 20;
+		this.menuOptionWidth = cy/8;
+		this.menuOptionHeight = cy/8;
+		this.numSlotsX = 9;
+		this.numSlotsY = 5;
+
+		this.draw = function() {
+			var i = 0;
+			var j = 0;
+			var numObject = 0;
+			for(i = 0; i < this.numSlotsX; i++){
+				for(j = 0; j < this.numSlotsY; j++) {
+					ctx.beginPath();
+					ctx.rect(this.menuInitX + (this.menuOptionWidth + 10)*i, this.menuInitY + (this.menuOptionHeight + 10)*j, this.menuOptionWidth, this.menuOptionHeight); 		
+					ctx.stroke();
+					ctx.closePath();
+					if(player.ship.inventoryObjects[numObject]) {
+						var invImg = player.ship.inventoryObjects[numObject].img;
+						ctx.drawImage(invImg, this.menuInitX + (this.menuOptionWidth + 10)*i, this.menuInitY + (this.menuOptionHeight + 10)*j, invImg.width, invImg.height);
+					}
+					numObject++;
+				}
+			}
+		}
+	}
+
 	var map = new Mapa();
+	map.generateColorIds();
+	var menu = new Menu();
 	var ship = new SpaceShip(map.maxWidth/2, map.maxHeight/2, "nave-1.png", 5, 100);
 	var player = new Player(ship);
 	var enemies = [];
 	var numberOfEnemies = 5;
-	var objects = [];
+	var deadEnemies = [];
 
 	for(var i = 0; i < numberOfEnemies; i++){
-    	var randomWidth =Math.floor(Math.random() * map.maxWidth*2);
-    	var randomHeight =Math.floor(Math.random() * map.maxHeight*2);
+    	var randomWidth = Math.floor(Math.random() * map.maxWidth*2);
+    	var randomHeight = Math.floor(Math.random() * map.maxHeight*2);
 		enemies[i] = new Enemy(randomWidth, randomHeight, "nave-1.png", 2, 10, 1);
 	}
 
@@ -561,38 +793,58 @@ function main(){
 
 	document.addEventListener("click", mouseclickHandler, false);
 	function mouseclickHandler(e){
-		player.ship.bullets.push(new Bullet(ship.x, ship.y, ship.ang));
+		if(!menu.isSelected)
+			player.ship.bullets.push(new Bullet(ship.x, ship.y, ship.ang));
+		else{
+			menu.calculateClick(e.clientX, e.clientY);
+		}
 	}
 
 	document.addEventListener("keydown", keydownHandler, false);
 	function keydownHandler(e){
 		if(e.keyCode == 87){
 			player.ship.wIsPressed = 1;
+			keypressed = "W";
+		} 
+
+		if(e.keyCode == 82){
+			player.ship.addInventoryObject();
+			keypressed = "R";
+		} 
+
+		if(e.keyCode == 69){
+			if(!menu.isSelected)
+				menu.isSelected++;
+			else
+				menu.isSelected--;
+
+			keypressed = "E";
 		}
 	}
 
 	function draw() {
 		ctx.clearRect(0, 0, cx*2, cy*2);
-		map.draw(ctx, cx, cy, player.ship);
+		map.draw(ctx, cx, cy, player.ship, enemies);
 		player.draw(ctx);
+		menu.draw(ctx);
 	}
 
 	function update(){
-		player.ship.update(mouseX, mouseY, cx, cy, enemies, objects);
+		player.ship.update(mouseX, mouseY, cx, cy, enemies, deadEnemies);
 		for(var i = 0; i < numberOfEnemies; i++) {
 			enemies[i].update(player.ship);
 			if(enemies[i].isDead()) {
 				player.addEnemyExp(enemies[i]);
 				if(enemies[i].isMoving == 0)
 					enemies[i].vel = 0;
-				objects.push(new Object(enemies[i].x, enemies[i].y, enemies[i].ang, enemies[i].vel));
+				deadEnemies.push(new DeadEnemy(enemies[i].x, enemies[i].y, enemies[i].ang, enemies[i].vel));
 				enemies.splice(i, 1);
 				numberOfEnemies--;
 			}
 		}
 
-		for(var i = 0; i < objects.length; i++) {
-			objects[i].update();
+		for(var i = 0; i < deadEnemies.length; i++) {
+			deadEnemies[i].update();
 		}
 
 		draw();
