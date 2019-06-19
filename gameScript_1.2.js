@@ -28,6 +28,7 @@ function main(){
 			ctx.fillText("mapH: " + map.img.height, 10, 150);
 			ctx.fillText("Key pressed: " + keypressed, 10, 180);
 			ctx.fillText("Nearest object: " + this.ship.idNearestObject, 10, 210);
+			ctx.fillText("chunksLoaded: " + map.chunksLoaded, 10, 240);
 		}
 	}
 
@@ -456,47 +457,65 @@ function main(){
 		}
 	}
 
+	function Chunk(posX, posY, src) {
+		this.posX = posX;
+		this.posY = posY;
+		this.img = new Image();
+		this.img.src = src;
+	}
+
 	function Mapa() {
 		this.minWidth = 0;
 		this.minHeight = 0;
-		this.maxWidth = 6000;
-		this.maxHeight = 1918;
+		this.maxWidth = 10000;
+		this.maxHeight = 10000;
+		this.chunkSize = 250;
+		this.chunks = [];
+		this.chunksLoaded = 0;
+		this.numberOfChunks = 4;
 		this.img = new Image();
-		this.img.src = "chunk.jpg";
-		this.colorIds = [];
-		this.chunkSize = 200;
+		this.img.src = "chunks/chunk-0.png";
 
 		this.generateColorIds = function() {
 			var k = 0;
 			for(var i = 0; i < this.maxWidth; i+=this.chunkSize) {
 		    	for(var j = 0; j < this.maxHeight; j+=this.chunkSize) {
-		    		this.colorIds[k] = this.getRandomColor();
+		    		var chunkNumber;
+		    		var random = 0;
+
+		    		random = Math.floor(Math.random()*500);
+		    		if(random < 498){
+		    			chunkNumber = Math.floor(Math.random()*(this.numberOfChunks - 1));
+		    			var src = "chunks/chunk-" + chunkNumber + ".png";
+		    		}
+		    		else{
+		    			chunkNumber = 1;
+		    			var src = "chunks/planets/planet-" + chunkNumber + ".png";
+		    		}
+		    		
+		    		this.chunks[k] = new Chunk(i, j, src);
 		    		k++;
 		    	}
 		    }
 		}
 
-		this.getRandomColor = function() {
-			var letters = '0123456789ABCDEF';
-			var color = '#';
-			for (var i = 0; i < 6; i++) {
-				color += letters[Math.floor(Math.random() * 16)];
-			}
-			return color;
-		}
-
 		this.draw = function(ctx, cx, cy, ship, enemies) {
 		    //ctx.drawImage(this.img, cx - ship.x, cy - ship.y);
+		    this.chunksLoaded = 0;
 
 			var k = 0;
 		    for(var i = 0; i < this.maxWidth; i+=this.chunkSize) {
 		    	for(var j = 0; j < this.maxHeight; j+=this.chunkSize) {
-		    		ctx.beginPath();
-		    		//ctx.rect(i - cx - ship.x, j - cy - ship.y, i + 200 - ship.x, j + 200 - ship.y);
-		    		ctx.drawImage(this.img, i - cx - ship.x, j - cy - ship.y);
-		    		ctx.fillStyle = this.colorIds[k];
-					ctx.fill();
-					ctx.closePath();
+		    		if(this.chunks[k].posX >= ship.x - cx && this.chunks[k].posX <= ship.x + cx*4
+		    			&& this.chunks[k].posY >= ship.y - cy && this.chunks[k].posY <= ship.y + cy*4) {
+			    		ctx.beginPath();
+			    		//ctx.rect(i - cx - ship.x, j - cy - ship.y, i + 200 - ship.x, j + 200 - ship.y);
+			    		ctx.drawImage(this.chunks[k].img, i - cx - ship.x, j - cy - ship.y);
+						ctx.fill();
+						ctx.closePath();
+						this.chunksLoaded++;
+					}
+
 					k++;
 		    	}
 		    }
